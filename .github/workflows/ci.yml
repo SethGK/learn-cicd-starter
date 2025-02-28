@@ -36,12 +36,10 @@ jobs:
 
       - name: Run format checks
         run: |
-          unformatted=$(gofmt -l .)
-          if [ -n "$unformateted" ]; then
-            echo "The following files are not properly formatted:"
-            echo "$unformatted"
-            exit 1
-          else
+          if test -z "$(go fmt ./...)"; then
             echo "All files are properly formatted."
+          else
+            echo "The following files are not properly formatted:"
+            go fmt ./...
+            exit 1
           fi
-      
