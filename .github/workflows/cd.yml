@@ -1,45 +1,59 @@
 name: cd
 
 on:
-    push:
-      branches: [main]
+  push:
+    branches: [main]
 
 jobs: 
-    Deploy:
-        name: Deploy
-        runs-on: ubuntu-latest
+  Deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
-        steps:
-            - name: Check out code
-              uses: actions/checkout@v4
-            
-            - name: Set up Go
-              uses: actions/setup-go@v5
-              with:
-                go-version: "1.23.0"
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+      
+      - name: Verify no sensitive credentials are committed
+        run: git diff HEAD
 
-            - name: Build the app
-              run: scripts/buildprod.sh
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.0"
 
-            - name: Authenticate with Google Cloud
-              uses: google-github-actions/auth@v2
-              with:
-                credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+      - name: Install goose (database migration tool)
+        run: |
+          go install github.com/pressly/goose/v3/cmd/goose@latest
+          echo "$HOME/go/bin" >> $GITHUB_PATH
 
-            - name: Set up Google Cloud SDK
-              uses: google-github-actions/setup-gcloud@v2
-              with:
-                project_id: notely-452404
+      - name: Build the app
+        run: scripts/buildprod.sh
 
-            - name: Build and push Docker image
-              run: |
-                gcloud builds submit --tag us-central1-docker.pkg.dev/notely-452404/notely-ar-repo/notely:latest .
-            
-            - name: Deploy to Cloud Run
-              run: |
-                gcloud run deploy notely \
-                  --image us-central1-docker.pkg.dev/notely-452404/notely-ar-repo/notely:latest \
-                  --region us-central1 \
-                  --allow-unauthenticated \
-                  --project notely-452404 \
-                  --max-instances=4
+      - name: Run database migrations
+        run: |
+          goose -dir sql/schema sqlite3 "$DATABASE_URL" up
+
+      - name: Authenticate with Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: notely-452404
+
+      - name: Build and push Docker image
+        run: |
+          gcloud builds submit --tag us-central1-docker.pkg.dev/notely-452404/notely-ar-repo/notely:latest .
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy notely \
+            --image us-central1-docker.pkg.dev/notely-452404/notely-ar-repo/notely:latest \
+            --region us-central1 \
+            --allow-unauthenticated \
+            --project notely-452404 \
+            --max-instances=4
