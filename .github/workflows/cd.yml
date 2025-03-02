@@ -45,8 +45,8 @@ jobs:
 
       - name: Run database migrations
         run: |
-          cd sql/schema
-          goose turso "$DATABASE_URL" up
+          chmod +x ./migrateup.sh
+          ./migrateup.sh
 
       - name: Authenticate with Google Cloud
         uses: google-github-actions/auth@v2
