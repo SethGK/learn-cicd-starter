@@ -45,8 +45,8 @@ jobs:
 
       - name: Run database migrations
         run: |
-          chmod +x ./migrateup.sh
-          ./migrateup.sh
+          chmod +x ./scripts/migrateup.sh
+          ./scripts/migrateup.sh
 
       - name: Authenticate with Google Cloud
         uses: google-github-actions/auth@v2
