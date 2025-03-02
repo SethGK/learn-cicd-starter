@@ -14,7 +14,7 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v4
-      
+
       - name: Verify no sensitive credentials are committed
         run: git diff HEAD
 
@@ -23,17 +23,30 @@ jobs:
         with:
           go-version: "1.23.0"
 
-      - name: Install goose (database migration tool)
+      - name: Install Goose (database migration tool)
         run: |
           go install github.com/pressly/goose/v3/cmd/goose@latest
           echo "$HOME/go/bin" >> $GITHUB_PATH
+        shell: bash
+
+      - name: Verify Goose installation
+        run: goose --version
 
       - name: Build the app
         run: scripts/buildprod.sh
 
+      - name: Debug DATABASE_URL
+        run: |
+          if [[ -z "$DATABASE_URL" ]]; then
+            echo "Error: DATABASE_URL is not set!" && exit 1
+          else
+            echo "DATABASE_URL is set."
+          fi
+
       - name: Run database migrations
         run: |
-          goose -dir sql/schema sqlite3 "$DATABASE_URL" up
+          cd sql/schema
+          goose turso "$DATABASE_URL" up
 
       - name: Authenticate with Google Cloud
         uses: google-github-actions/auth@v2
@@ -57,8 +70,3 @@ jobs:
             --allow-unauthenticated \
             --project notely-452404 \
             --max-instances=4
-
-      - name: Debug DATABASE_URL
-        run: echo "DATABASE_URL is set"
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
