@@ -57,3 +57,8 @@ jobs:
             --allow-unauthenticated \
             --project notely-452404 \
             --max-instances=4
+
+      - name: Debug DATABASE_URL
+        run: echo "DATABASE_URL is set"
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
